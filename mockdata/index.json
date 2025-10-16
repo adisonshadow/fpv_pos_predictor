@@ -1,0 +1,34 @@
+{
+  "generated_at": "2025-10-15",
+  "description": "FPV运动轨迹模拟数据集",
+  "scenarios": [
+    {
+      "name": "2D 直线运动",
+      "file": "mockdata/2d_straight_line.json",
+      "dimension": "2D",
+      "points": 7,
+      "duration": 2.0,
+      "description": "匀速直线运动,速度2.5m/s,45度角"
+    },
+    {
+      "name": "3D 螺旋爬升",
+      "file": "mockdata/3d_helical_climb.json",
+      "dimension": "3D",
+      "points": 10,
+      "duration": 4.0,
+      "description": "螺旋上升运动,半径2.5m,爬升速率1.5m/s"
+    },
+    {
+      "name": "3D 剧烈机动",
+      "file": "mockdata/3d_aggressive_maneuver.json",
+      "dimension": "3D",
+      "points": 7,
+      "duration": 3.0,
+      "description": "高机动性运动,模拟FPV快速机动"
+    }
+  ],
+  "total_scenarios": 3,
+  "measurement_noise_std": 0.12,
+  "sampling_rate": "20Hz (dt=0.05s)"
+}
+

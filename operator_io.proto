@@ -1,0 +1,123 @@
+// FPV预测算子的输入/输出协议定义
+// 基于标准OperatorIO结构，实现跨语言兼容的算子接口
+
+syntax = "proto3";
+
+package fpv_predictor;
+
+// 算子输入/输出的统一结构
+message OperatorIO {
+  // 1. 元数据：描述数据的「属性」，用于算子快速解析和校验
+  message Metadata {
+    string io_id = 1;          // IO唯一标识（用于引擎追踪数据链路）
+    string data_type = 2;      // 数据类型（如position_2d, position_3d, prediction_result）
+    repeated int32 shape = 3;  // 数据维度（如[2]表示2D位置，[3]表示3D位置）
+    string source = 4;         // 数据来源（如传感器ID、上游算子ID）
+    int64 timestamp = 5;       // 数据生成时间戳（毫秒）
+    map<string, string> ext = 6; // 扩展元数据
+  }
+
+  // 辅助消息：包装数组类型
+  message IntArray {
+    repeated int32 values = 1;
+  }
+  
+  message FloatArray {
+    repeated float values = 1;
+  }
+
+  // 2. 数据体：实际业务数据
+  message DataBody {
+    oneof data_type {
+      // 基础数据类型
+      int32 int_val = 1;
+      float float_val = 2;
+      bytes binary_val = 3;
+      IntArray int_array = 4;
+      FloatArray float_array = 5;
+      
+      // 结构化数据
+      string json_struct = 6;
+      
+      // FPV专用数据类型
+      PositionData position = 7;      // 位置数据
+      PredictionResult prediction = 8; // 预测结果
+      StateEstimate state = 9;         // 状态估计
+    }
+  }
+
+  // 3. 控制信息：引擎/算子的「调度指令」
+  message ControlInfo {
+    string op_action = 1;      // 算子动作（compute, update, predict, reset）
+    int32 priority = 2;        // 数据优先级
+    map<string, string> params = 3; // 算子参数
+  }
+
+  // 核心字段组合
+  Metadata metadata = 1;
+  repeated DataBody data_bodies = 2;
+  ControlInfo control_info = 3;
+  ErrorInfo error = 4;
+}
+
+// FPV专用：位置数据
+message PositionData {
+  enum Dimension {
+    DIM_2D = 0;  // 2D平面位置
+    DIM_3D = 1;  // 3D空间位置
+  }
+  
+  Dimension dimension = 1;
+  repeated float coordinates = 2;  // [x, y] 或 [x, y, z]
+  float timestamp = 3;              // 时间戳（秒）
+  float confidence = 4;             // 测量置信度（0-1）
+  string sensor_id = 5;             // 传感器ID
+}
+
+// FPV专用：预测结果
+message PredictionResult {
+  message SinglePrediction {
+    int32 delay_ms = 1;                // 预测延迟（毫秒）
+    repeated float predicted_position = 2; // 预测位置
+    float accuracy_score = 3;          // 准确率得分（0-1）
+    float fire_feasibility = 4;        // 射击可行性（0-1）
+    repeated float covariance = 5;     // 协方差矩阵（扁平化）
+  }
+  
+  repeated SinglePrediction predictions = 1; // 多个时间点的预测
+  int64 prediction_time = 2;                 // 预测时刻时间戳
+  string predictor_type = 3;                 // 预测器类型（2D/3D）
+}
+
+// FPV专用：状态估计
+message StateEstimate {
+  repeated float position = 1;      // 位置 [x, y] 或 [x, y, z]
+  repeated float velocity = 2;      // 速度 [vx, vy] 或 [vx, vy, vz]
+  repeated float acceleration = 3;  // 加速度 [ax, ay, az]（仅3D）
+  float speed = 4;                  // 速度模
+  float acceleration_magnitude = 5; // 加速度模（仅3D）
+  float uncertainty = 6;            // 位置不确定性
+  int64 timestamp = 7;              // 时间戳
+}
+
+// 错误信息
+message ErrorInfo {
+  int32 code = 1;
+  string msg = 2;
+  string detail = 3;
+}
+
+// 算子配置（初始化参数）
+message PredictorConfig {
+  enum PredictorType {
+    TYPE_2D = 0;
+    TYPE_3D = 1;
+  }
+  
+  PredictorType type = 1;
+  repeated float initial_position = 2;  // 初始位置
+  float measurement_std = 3;            // 测量噪声标准差
+  float process_std = 4;                // 过程噪声标准差
+  repeated int32 prediction_delays = 5; // 预测延迟列表（毫秒）
+}
+

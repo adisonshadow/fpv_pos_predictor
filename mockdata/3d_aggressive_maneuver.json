@@ -1,0 +1,59 @@
+[
+  {
+    "time": 0.0,
+    "true_position": [0.0, 0.0, 15.0],
+    "measured_position": [0.08, -0.12, 15.05],
+    "velocity": [3.0, 0.0, 1.0],
+    "acceleration": [0.0, 0.0, -0.5],
+    "scenario": "3d_aggressive_maneuver"
+  },
+  {
+    "time": 0.5,
+    "true_position": [1.52, 0.01, 15.48],
+    "measured_position": [1.48, 0.05, 15.52],
+    "velocity": [3.15, 0.25, 0.95],
+    "acceleration": [0.61, 1.02, -0.21],
+    "scenario": "3d_aggressive_maneuver"
+  },
+  {
+    "time": 1.0,
+    "true_position": [3.28, 0.85, 15.82],
+    "measured_position": [3.35, 0.78, 15.89],
+    "velocity": [4.21, 2.88, 0.62],
+    "acceleration": [2.12, 5.25, -0.66],
+    "scenario": "3d_aggressive_maneuver"
+  },
+  {
+    "time": 1.5,
+    "true_position": [5.92, 4.15, 15.95],
+    "measured_position": [5.88, 4.22, 15.88],
+    "velocity": [6.58, 7.21, 0.18],
+    "acceleration": [4.74, 8.66, -0.88],
+    "scenario": "3d_aggressive_maneuver"
+  },
+  {
+    "time": 2.0,
+    "true_position": [9.82, 9.28, 15.68],
+    "measured_position": [9.75, 9.35, 15.75],
+    "velocity": [8.95, 9.85, -0.62],
+    "acceleration": [4.74, 5.28, -1.6],
+    "scenario": "3d_aggressive_maneuver"
+  },
+  {
+    "time": 2.5,
+    "true_position": [14.52, 14.22, 14.95],
+    "measured_position": [14.58, 14.15, 15.02],
+    "velocity": [9.25, 8.52, -1.82],
+    "acceleration": [0.6, -2.66, -2.4],
+    "scenario": "3d_aggressive_maneuver"
+  },
+  {
+    "time": 3.0,
+    "true_position": [18.95, 17.85, 13.72],
+    "measured_position": [18.88, 17.92, 13.65],
+    "velocity": [8.15, 5.82, -2.95],
+    "acceleration": [-2.2, -5.4, -2.26],
+    "scenario": "3d_aggressive_maneuver"
+  }
+]
+
