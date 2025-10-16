@@ -19,8 +19,12 @@
 
 使用 **恒定转弯率和速度 (Constant Turn Rate and Velocity, CTRV)** 模型，适用于平面运动场景。
 
-**状态向量 $\mathbf{x}_{2D}$：**
-$$\mathbf{x}_{2D} = [x, y, v, \phi, \dot{\phi}]^T$$
+**状态向量** $\mathbf{x}_{2D}$：
+
+$$
+\mathbf{x}_{2D} = [x, y, v, \phi, \dot{\phi}]^T
+$$
+
 其中：
   * $x, y$：平面位置坐标
   * $v$：速度 (标量)
@@ -36,17 +40,30 @@ $$\mathbf{x}_{2D} = [x, y, v, \phi, \dot{\phi}]^T$$
 
 使用恒定加速度模型，适用于真实的3D空间运动场景。
 
-**状态向量 $\mathbf{x}_{3D}$：**
-$$\mathbf{x}_{3D} = [x, y, z, v_x, v_y, v_z, a_x, a_y, a_z]^T$$
+**状态向量** $\mathbf{x}_{3D}$：
+
+$$
+\mathbf{x}_{3D} = [x, y, z, v_x, v_y, v_z, a_x, a_y, a_z]^T
+$$
+
 其中：
   * $x, y, z$：3D空间位置坐标
   * $v_x, v_y, v_z$：3D速度分量
   * $a_x, a_y, a_z$：3D加速度分量
 
 **运动学方程：**
-$$\mathbf{p}_{t+\Delta t} = \mathbf{p}_t + \mathbf{v}_t \Delta t + \frac{1}{2}\mathbf{a}_t \Delta t^2$$
-$$\mathbf{v}_{t+\Delta t} = \mathbf{v}_t + \mathbf{a}_t \Delta t$$
-$$\mathbf{a}_{t+\Delta t} = \mathbf{a}_t \quad \text{(恒定加速度假设)}$$
+
+$$
+\mathbf{p}_{t+\Delta t} = \mathbf{p}_t + \mathbf{v}_t \Delta t + \frac{1}{2}\mathbf{a}_t \Delta t^2
+$$
+
+$$
+\mathbf{v}_{t+\Delta t} = \mathbf{v}_t + \mathbf{a}_t \Delta t
+$$
+
+$$
+\mathbf{a}_{t+\Delta t} = \mathbf{a}_t \quad \text{(恒定加速度假设)}
+$$
 
 **特点：**
 - 支持完整的3D空间运动
