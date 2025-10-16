@@ -112,6 +112,15 @@ message PredictorConfig {
   enum PredictorType {
     TYPE_2D = 0;
     TYPE_3D = 1;
+    TYPE_IMM_2D = 2;           // IMM 2D多模型
+    TYPE_IMM_3D = 3;           // IMM 3D多模型
+  }
+  
+  enum FeatureFlags {
+    FEATURE_NONE = 0;
+    FEATURE_ADAPTIVE = 1;      // 自适应滤波
+    FEATURE_RECOVERY = 2;      // 跟踪恢复
+    FEATURE_BOTH = 3;          // 两者都启用
   }
   
   PredictorType type = 1;
@@ -119,5 +128,12 @@ message PredictorConfig {
   float measurement_std = 3;            // 测量噪声标准差
   float process_std = 4;                // 过程噪声标准差
   repeated int32 prediction_delays = 5; // 预测延迟列表（毫秒）
+  
+  // 高级功能配置
+  FeatureFlags features = 6;            // 启用的功能
+  float adaptation_rate = 7;            // 自适应速率（0-1）
+  int32 adaptation_window = 8;          // 自适应窗口大小
+  float recovery_search_radius = 9;     // 恢复搜索半径（米）
+  int32 max_miss_count = 10;            // 最大丢失次数
 }
 

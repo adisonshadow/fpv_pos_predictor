@@ -63,7 +63,7 @@ class OperatorIOWrapper:
 
 
 class FPVPredictorOperator(OperatorIOWrapper):
-    """FPV预测算子 - 标准化接口封装"""
+    """FPV预测算子 - 标准化接口封装（支持高级功能）"""
     
     def __init__(self, config: Dict[str, Any]):
         """
@@ -71,23 +71,29 @@ class FPVPredictorOperator(OperatorIOWrapper):
         
         参数:
             config: 配置字典，包含：
-                - type: "2D" 或 "3D"
+                - type: "2D", "3D", "IMM_2D", "IMM_3D"
                 - initial_position: 初始位置列表
                 - measurement_std: 测量噪声标准差
                 - process_std: 过程噪声标准差
                 - prediction_delays: 预测延迟列表（毫秒）
+                - features: "none", "adaptive", "recovery", "both" (高级功能)
+                - adaptation_rate: 自适应速率 (可选)
+                - adaptation_window: 自适应窗口 (可选)
+                - recovery_search_radius: 搜索半径 (可选)
+                - max_miss_count: 最大丢失次数 (可选)
         """
         self.config = config
         self.predictor = None
         self.predictor_type = config.get("type", "2D")
         self.prediction_delays = config.get("prediction_delays", [50, 200, 500, 1000])
-        self.operator_id = f"fpv_predictor_{self.predictor_type}_{int(time.time())}"
+        self.features = config.get("features", "none")
+        self.operator_id = f"fpv_predictor_{self.predictor_type}_{self.features}_{int(time.time())}"
         
         # 尝试初始化预测器
         self._initialize_predictor(config)
     
     def _initialize_predictor(self, config: Dict):
-        """内部方法：初始化预测器"""
+        """内部方法：初始化预测器（支持高级功能）"""
         try:
             from operator import FlyPredictor, FlyPredictor3D
             
@@ -95,24 +101,51 @@ class FPVPredictorOperator(OperatorIOWrapper):
             measurement_std = config.get("measurement_std", 0.1)
             process_std = config.get("process_std", 0.5)
             
-            if self.predictor_type == "2D":
+            # 创建基础预测器
+            base_predictor = None
+            
+            if self.predictor_type in ["2D", "IMM_2D"]:
                 if not initial_pos or len(initial_pos) < 2:
                     raise ValueError("2D预测器需要至少2个初始坐标")
-                self.predictor = FlyPredictor(
-                    initial_pos=initial_pos[:2],
-                    measurement_std=measurement_std,
-                    process_std=process_std
-                )
-            elif self.predictor_type == "3D":
+                
+                if self.predictor_type == "IMM_2D":
+                    # 使用IMM
+                    from operator_imm import IMMPredictor2D
+                    base_predictor = IMMPredictor2D(
+                        initial_pos=initial_pos[:2],
+                        measurement_std=measurement_std
+                    )
+                else:
+                    # 普通2D
+                    base_predictor = FlyPredictor(
+                        initial_pos=initial_pos[:2],
+                        measurement_std=measurement_std,
+                        process_std=process_std
+                    )
+                    
+            elif self.predictor_type in ["3D", "IMM_3D"]:
                 if not initial_pos or len(initial_pos) < 3:
                     raise ValueError("3D预测器需要至少3个初始坐标")
-                self.predictor = FlyPredictor3D(
-                    initial_pos=initial_pos[:3],
-                    measurement_std=measurement_std,
-                    process_std=process_std
-                )
+                
+                if self.predictor_type == "IMM_3D":
+                    # 使用IMM 3D
+                    from operator_imm import IMMPredictor3D
+                    base_predictor = IMMPredictor3D(
+                        initial_pos=initial_pos[:3],
+                        measurement_std=measurement_std
+                    )
+                else:
+                    # 普通3D
+                    base_predictor = FlyPredictor3D(
+                        initial_pos=initial_pos[:3],
+                        measurement_std=measurement_std,
+                        process_std=process_std
+                    )
             else:
                 raise ValueError(f"不支持的预测器类型: {self.predictor_type}")
+            
+            # 应用高级功能
+            self.predictor = self._apply_advanced_features(base_predictor, config)
                 
         except ImportError as e:
             print(f"警告: 无法导入预测器模块 - {e}")
@@ -120,6 +153,46 @@ class FPVPredictorOperator(OperatorIOWrapper):
         except Exception as e:
             print(f"初始化预测器失败: {e}")
             self.predictor = None
+    
+    def _apply_advanced_features(self, base_predictor, config: Dict):
+        """应用高级功能（自适应、恢复等）"""
+        predictor = base_predictor
+        
+        # 应用自适应滤波
+        if self.features in ["adaptive", "both"]:
+            try:
+                from operator_adaptive import AdaptiveFilter
+                adaptation_rate = config.get("adaptation_rate", 0.1)
+                adaptation_window = config.get("adaptation_window", 10)
+                
+                predictor = AdaptiveFilter(
+                    predictor,
+                    adaptation_rate=adaptation_rate,
+                    window_size=adaptation_window,
+                    enable_adaptation=True
+                )
+                print(f"✓ 已启用自适应滤波 (rate={adaptation_rate}, window={adaptation_window})")
+            except ImportError:
+                print("警告: 无法导入operator_adaptive，跳过自适应功能")
+        
+        # 应用跟踪恢复
+        if self.features in ["recovery", "both"]:
+            try:
+                from operator_track_recovery import TrackRecoveryFilter
+                search_radius = config.get("recovery_search_radius", 5.0)
+                max_miss = config.get("max_miss_count", 5)
+                
+                predictor = TrackRecoveryFilter(
+                    predictor,
+                    position_threshold=2.0,
+                    max_miss_count=max_miss,
+                    search_radius=search_radius
+                )
+                print(f"✓ 已启用跟踪恢复 (radius={search_radius}m, max_miss={max_miss})")
+            except ImportError:
+                print("警告: 无法导入operator_track_recovery，跳过恢复功能")
+        
+        return predictor
     
     def process_input(self, operator_io: Dict) -> Dict:
         """
@@ -158,17 +231,43 @@ class FPVPredictorOperator(OperatorIOWrapper):
             )
     
     def _handle_update(self, operator_io: Dict) -> Dict:
-        """处理更新动作（更新测量数据）"""
+        """处理更新动作（更新测量数据，支持无测量情况）"""
         if not self.predictor:
             return self._create_error_response(2000, "预测器未初始化", 
                                               operator_io.get("metadata", {}))
         
         try:
+            # 检查是否有测量数据
+            control_info = operator_io.get("control_info", {})
+            params = control_info.get("params", {})
+            has_measurement = params.get("has_measurement", "true") == "true"
+            
             # 解析位置数据
             data_bodies = operator_io.get("data_bodies", [])
-            if not data_bodies:
-                return self._create_error_response(1004, "缺少数据体",
-                                                  operator_io.get("metadata", {}))
+            
+            # 无测量的情况（用于跟踪恢复）
+            if not has_measurement or not data_bodies:
+                # 检查是否支持跟踪恢复
+                if hasattr(self.predictor, 'update') and self.features in ["recovery", "both"]:
+                    # 使用None调用update（TrackRecoveryFilter支持）
+                    timestamp = operator_io.get("metadata", {}).get("timestamp", time.time() * 1000) / 1000
+                    self.predictor.update(None, timestamp, measurement_confidence=0.0)
+                    
+                    metadata = self.create_metadata(
+                        io_id=f"{self.operator_id}_update_{int(time.time()*1000)}",
+                        data_type="update_ack",
+                        shape=[],
+                        source=self.operator_id
+                    )
+                    
+                    return self.create_operator_io(
+                        metadata=metadata,
+                        data_bodies=[{"json_struct": json.dumps({"status": "no_measurement"})}],
+                        control_info={"op_action": "update", "status": "no_measurement"}
+                    )
+                else:
+                    return self._create_error_response(1004, "缺少数据体且不支持恢复模式",
+                                                      operator_io.get("metadata", {}))
             
             # 提取位置和时间
             first_body = data_bodies[0]
@@ -189,7 +288,7 @@ class FPVPredictorOperator(OperatorIOWrapper):
                                                   operator_io.get("metadata", {}))
             
             # 验证维度
-            expected_dim = 2 if self.predictor_type == "2D" else 3
+            expected_dim = 2 if self.predictor_type in ["2D", "IMM_2D"] else 3
             if len(position) < expected_dim:
                 return self._create_error_response(
                     1002,
@@ -197,8 +296,17 @@ class FPVPredictorOperator(OperatorIOWrapper):
                     operator_io.get("metadata", {})
                 )
             
+            # 获取测量置信度（用于跟踪恢复）
+            confidence = 1.0
+            if "position" in first_body:
+                confidence = first_body["position"].get("confidence", 1.0)
+            
             # 更新预测器
-            self.predictor.update(position, timestamp)
+            # 检查是否支持confidence参数（TrackRecoveryFilter支持）
+            if self.features in ["recovery", "both"]:
+                self.predictor.update(position, timestamp, measurement_confidence=confidence)
+            else:
+                self.predictor.update(position, timestamp)
             
             # 返回成功响应
             metadata = self.create_metadata(
@@ -288,18 +396,49 @@ class FPVPredictorOperator(OperatorIOWrapper):
             # 获取当前状态
             state = self.predictor.get_current_state()
             
-            # 构造状态估计结果
+            # 构造状态估计结果（包含所有高级功能信息）
             state_estimate = {
                 "position": state["position"],
-                "velocity": state["velocity"],
+                "velocity": state.get("velocity", [0, 0]),
                 "speed": state.get("speed", 0.0),
                 "uncertainty": state["uncertainty"],
-                "timestamp": int(time.time() * 1000)
+                "timestamp": int(time.time() * 1000),
+                "predictor_type": self.predictor_type,
+                "enabled_features": self.features
             }
             
-            if self.predictor_type == "3D":
+            # 3D特有信息
+            if self.predictor_type in ["3D", "IMM_3D"]:
                 state_estimate["acceleration"] = state.get("acceleration", [0, 0, 0])
                 state_estimate["acceleration_magnitude"] = state.get("acceleration_magnitude", 0.0)
+            
+            # IMM特有信息
+            if "active_model" in state:
+                state_estimate["active_model"] = state["active_model"]
+                state_estimate["model_probabilities"] = state.get("model_probabilities", [])
+            
+            # 自适应滤波信息
+            if "adaptation_count" in state:
+                state_estimate["adaptive_stats"] = {
+                    "adaptation_count": state.get("adaptation_count", 0),
+                    "adaptation_rate": state.get("adaptation_rate", 0.0),
+                    "is_consistent": state.get("is_consistent", True)
+                }
+            
+            # 跟踪恢复信息
+            if "track_status" in state:
+                state_estimate["track_info"] = {
+                    "status": state.get("track_status", "tracking"),
+                    "quality": state.get("track_quality", 1.0),
+                    "loss_count": state.get("loss_count", 0),
+                    "recovery_count": state.get("recovery_count", 0),
+                    "is_stable": state.get("is_stable", True)
+                }
+                
+                # 搜索区域信息
+                if "search_center" in state and state["search_center"] is not None:
+                    state_estimate["track_info"]["search_center"] = state["search_center"]
+                    state_estimate["track_info"]["search_radius"] = state.get("search_radius", 0.0)
             
             # 创建响应
             metadata = self.create_metadata(
